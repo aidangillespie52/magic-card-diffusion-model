@@ -33,45 +33,50 @@ class ResidualBlock(nn.Module):
 
 # Encoder with ResNet blocks
 class Encoder(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, latent_size=(50, 50)):
         super(Encoder, self).__init__()
         self.initial = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1)
         self.res1 = ResidualBlock(64, 128, stride=2)  # Downsample by 2
         self.res2 = ResidualBlock(128, 256, stride=2)  # Downsample by 2
-        self.res3 = ResidualBlock(256, 512, stride=2)  # Downsample to 3 channels
+        self.res3 = ResidualBlock(256, 512, stride=2)  # Downsample
 
-        # AdaptiveAvgPool2d to ensure fixed latent space size (3, 50, 50)
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((40, 40))
+        # Update adaptive pooling to a custom latent size (e.g., 8x8)
+        self.adaptive_pool = nn.AdaptiveAvgPool2d(latent_size)
 
     def forward(self, x):
         x = F.relu(self.initial(x))
         x = self.res1(x)
         x = self.res2(x)
         x = self.res3(x)
+        x = self.adaptive_pool(x)  # Apply the new latent size
         return x
 
 class Decoder(nn.Module):
-    def __init__(self, output_channels):
+    def __init__(self, output_channels, latent_size=(50, 50)):
         super(Decoder, self).__init__()
         self.deconv1 = nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.deconv2 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.deconv3 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.final = nn.Conv2d(64, output_channels, kernel_size=3, stride=1, padding=1)
 
+        # Calculate the final output size to match the input size
+        self.latent_size = latent_size
+
     def forward(self, x, input_size):
         x = F.relu(self.deconv1(x))
         x = F.relu(self.deconv2(x))
         x = F.relu(self.deconv3(x))
-        x = F.interpolate(x, size=input_size, mode='bilinear', align_corners=True)  # Optional interpolation to match exact size
+        # Use interpolation if necessary to match the input size
+        x = F.interpolate(x, size=input_size, mode='bilinear', align_corners=True)
         x = self.final(x)
         return x
 
 # Autoencoder that combines the Encoder and Decoder
 class ResNetAutoencoder(nn.Module):
-    def __init__(self, in_channels=3, output_channels=3):
+    def __init__(self, in_channels=3, output_channels=3, latent_size=(50, 50)):
         super(ResNetAutoencoder, self).__init__()
-        self.encoder = Encoder(in_channels)
-        self.decoder = Decoder(output_channels)
+        self.encoder = Encoder(in_channels, latent_size)
+        self.decoder = Decoder(output_channels, latent_size)
 
     def forward(self, x):
         input_size = x.size()[2:]
