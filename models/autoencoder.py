@@ -33,7 +33,7 @@ class ResidualBlock(nn.Module):
 
 # Encoder with ResNet blocks
 class Encoder(nn.Module):
-    def __init__(self, in_channels, latent_size=(50, 50)):
+    def __init__(self, in_channels, latent_size=(32, 32)):
         super(Encoder, self).__init__()
         self.initial = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1)
         self.res1 = ResidualBlock(64, 128, stride=2)  # Downsample by 2
@@ -52,7 +52,7 @@ class Encoder(nn.Module):
         return x
 
 class Decoder(nn.Module):
-    def __init__(self, output_channels, latent_size=(50, 50)):
+    def __init__(self, output_channels, latent_size=(32, 32)):
         super(Decoder, self).__init__()
         self.deconv1 = nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.deconv2 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1)
@@ -73,7 +73,7 @@ class Decoder(nn.Module):
 
 # Autoencoder that combines the Encoder and Decoder
 class ResNetAutoencoder(nn.Module):
-    def __init__(self, in_channels=3, output_channels=3, latent_size=(50, 50)):
+    def __init__(self, in_channels=3, output_channels=3, latent_size=(32, 32)):
         super(ResNetAutoencoder, self).__init__()
         self.encoder = Encoder(in_channels, latent_size)
         self.decoder = Decoder(output_channels, latent_size)
